@@ -2,6 +2,18 @@
 #include <avr/interrupt.h>
 
 #define MAXVAL_TIMER1 32767
+#define timer0_10ms_pres1024 156
+
+#define kp 1
+#define ki 1
+#define kd 0.25
+
+uint8_t err_prec=0;
+int I=0;
+
+void timer0_setup_pres1024(){
+	TCCR0B=(1<<CS02)|(1<<CS00);
+}
 
 // setare timer1 pt PWM
 void timer1_setup_pwm() {			//timer 1 lucreaza in modul Fast PWM, numarand pana la valoarea din ICR1;
@@ -65,15 +77,48 @@ void stop(){
 	TCCR1A&=~((1 << COM1A1) | (1 << COM1B1) | (1 << COM1A0) | (1<< COM1B0));
 }
 
+uint8_t val_senzori_linie(){
+	int val=PIND&0XF8;
+	return val>>3;
+}
+
+short int error(){
+	int val=val_senzori_linie(),err=-2;
+	while(val){
+		if(!(val&1)) break;
+		else err++;
+		val>>=1;
+	}
+	if(val==-2) return 0;
+	else return err;
+}
+
+int pid(){
+	short int err=error(),D=err-err_prec;
+	I+=err;
+	err_prec=err;
+	return kp*err+kd*D+ki*I;
+}
+
+void control(){
+	int comanda=pid(),stanga=100,dreapta=100;
+	if(comanda<0) dreapta-=comanda;
+	else if(comanda>0) stanga-=comanda;
+	curba_var(stanga,dreapta);
+}
 
 int main() {
 	cli();
 	timer1_setup_pwm();
+	timer0_setup_pres1024();
 	DDRB = 0xFF;
 	sei();
 	stop();
+	fata();
 	while (1) {
-
+		TCNT0=0;
+		control();
+		while(TCNT0<timer0_10ms_pres1024){}	//10ms perioada de esantionare
 	}
 	return 0;
 }
