@@ -102,8 +102,8 @@ int pid(){
 
 void control(){
 	int comanda=pid(),stanga=100,dreapta=100;
-	if(comanda<0) dreapta-=comanda;
-	else if(comanda>0) stanga-=comanda;
+	if(comanda<0) stanga-=comanda;
+	else if(comanda>0) dreapta-=comanda;
 	curba_var(stanga,dreapta);
 }
 
